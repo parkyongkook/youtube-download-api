@@ -144,7 +144,13 @@ app.get("/mp3", async (req, res) => {
 
         stream.on('error', (error) => {
             console.error(`[MP3] Stream error:`, error);
-            if (!res.finished && !res.destroyed) {
+            if (!res.headersSent) {
+                res.writeHead(500, {
+                    'Access-Control-Allow-Origin': '*',
+                    'Content-Type': 'application/json'
+                });
+                res.end(JSON.stringify({ error: error.message || "Stream error occurred" }));
+            } else if (!res.finished && !res.destroyed) {
                 try {
                     res.end();
                 } catch (e) {
@@ -262,7 +268,13 @@ app.get("/mp4", async (req, res) => {
 
         stream.on('error', (error) => {
             console.error(`[MP4] Stream error:`, error);
-            if (!res.finished && !res.destroyed) {
+            if (!res.headersSent) {
+                res.writeHead(500, {
+                    'Access-Control-Allow-Origin': '*',
+                    'Content-Type': 'application/json'
+                });
+                res.end(JSON.stringify({ error: error.message || "Stream error occurred" }));
+            } else if (!res.finished && !res.destroyed) {
                 try {
                     res.end();
                 } catch (e) {
