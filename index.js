@@ -145,25 +145,37 @@ app.get("/mp3", async (req, res) => {
             }
         });
 
-        // 응답 헤더를 먼저 명시적으로 전송
-        res.writeHead(200, {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Accept, User-Agent',
-            'Content-Disposition': `attachment; filename="${encodeURIComponent(safeFileName)}.mp3"`,
-            'Content-Type': 'audio/mpeg'
-        });
-
         // 타임아웃 설정 (30분)
         res.setTimeout(1800000);
 
         // 스트림 데이터 전송 모니터링
         let bytesSent = 0;
+        let headersSent = false;
+
+        // 첫 데이터 청크가 도착하면 헤더 전송 후 스트림 파이핑
+        stream.once('data', (firstChunk) => {
+            if (!headersSent) {
+                headersSent = true;
+                console.log(`[MP3] First chunk received: ${firstChunk.length} bytes, sending headers...`);
+                // 헤더를 명시적으로 전송하고 첫 청크를 쓰기
+                res.writeHead(200, {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Accept, User-Agent',
+                    'Content-Disposition': `attachment; filename="${encodeURIComponent(safeFileName)}.mp3"`,
+                    'Content-Type': 'audio/mpeg'
+                });
+                // 첫 청크를 응답에 쓰기
+                res.write(firstChunk);
+                bytesSent += firstChunk.length;
+                console.log(`[MP3] First chunk written: ${firstChunk.length} bytes`);
+                // 나머지 스트림을 파이핑
+                stream.pipe(res, { end: false });
+            }
+        });
+
         stream.on('data', (chunk) => {
             bytesSent += chunk.length;
-            if (bytesSent === chunk.length) {
-                console.log(`[MP3] First chunk sent: ${chunk.length} bytes`);
-            }
         });
 
         stream.on('error', (error) => {
@@ -175,7 +187,7 @@ app.get("/mp3", async (req, res) => {
                 response: error.response?.statusCode
             });
             
-            if (!res.headersSent) {
+            if (!headersSent) {
                 res.writeHead(500, {
                     'Access-Control-Allow-Origin': '*',
                     'Content-Type': 'application/json'
@@ -204,9 +216,22 @@ app.get("/mp3", async (req, res) => {
             }
         });
 
-        // 스트림을 응답으로 파이핑
-        console.log(`[MP3] Piping stream to response...`);
-        stream.pipe(res);
+        // 스트림이 데이터를 보내지 않으면 타임아웃 처리
+        setTimeout(() => {
+            if (!headersSent) {
+                console.error(`[MP3] Timeout: No data received from stream`);
+                if (!res.headersSent) {
+                    res.writeHead(500, {
+                        'Access-Control-Allow-Origin': '*',
+                        'Content-Type': 'application/json'
+                    });
+                    res.end(JSON.stringify({ error: "Stream timeout: No data received" }));
+                }
+                if (stream && !stream.destroyed) {
+                    stream.destroy();
+                }
+            }
+        }, 30000); // 30초 타임아웃
 
     } catch (error) {
         console.error("[MP3] Error:", error);
@@ -294,30 +319,42 @@ app.get("/mp4", async (req, res) => {
             }
         });
 
-        // 응답 헤더를 먼저 명시적으로 전송
-        res.writeHead(200, {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Accept, User-Agent',
-            'Content-Disposition': `attachment; filename="${encodeURIComponent(safeFileName)}.mp4"`,
-            'Content-Type': 'video/mp4'
-        });
-
         // 타임아웃 설정 (30분)
         res.setTimeout(1800000);
 
         // 스트림 데이터 전송 모니터링
         let bytesSent = 0;
+        let headersSent = false;
+
+        // 첫 데이터 청크가 도착하면 헤더 전송 후 스트림 파이핑
+        stream.once('data', (firstChunk) => {
+            if (!headersSent) {
+                headersSent = true;
+                console.log(`[MP4] First chunk received: ${firstChunk.length} bytes, sending headers...`);
+                // 헤더를 명시적으로 전송하고 첫 청크를 쓰기
+                res.writeHead(200, {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Accept, User-Agent',
+                    'Content-Disposition': `attachment; filename="${encodeURIComponent(safeFileName)}.mp4"`,
+                    'Content-Type': 'video/mp4'
+                });
+                // 첫 청크를 응답에 쓰기
+                res.write(firstChunk);
+                bytesSent += firstChunk.length;
+                console.log(`[MP4] First chunk written: ${firstChunk.length} bytes`);
+                // 나머지 스트림을 파이핑
+                stream.pipe(res, { end: false });
+            }
+        });
+
         stream.on('data', (chunk) => {
             bytesSent += chunk.length;
-            if (bytesSent === chunk.length) {
-                console.log(`[MP4] First chunk sent: ${chunk.length} bytes`);
-            }
         });
 
         stream.on('error', (error) => {
             console.error(`[MP4] Stream error:`, error);
-            if (!res.headersSent) {
+            if (!headersSent) {
                 res.writeHead(500, {
                     'Access-Control-Allow-Origin': '*',
                     'Content-Type': 'application/json'
@@ -342,9 +379,22 @@ app.get("/mp4", async (req, res) => {
             }
         });
 
-        // 스트림을 응답으로 파이핑
-        console.log(`[MP4] Piping stream to response...`);
-        stream.pipe(res);
+        // 스트림이 데이터를 보내지 않으면 타임아웃 처리
+        setTimeout(() => {
+            if (!headersSent) {
+                console.error(`[MP4] Timeout: No data received from stream`);
+                if (!res.headersSent) {
+                    res.writeHead(500, {
+                        'Access-Control-Allow-Origin': '*',
+                        'Content-Type': 'application/json'
+                    });
+                    res.end(JSON.stringify({ error: "Stream timeout: No data received" }));
+                }
+                if (stream && !stream.destroyed) {
+                    stream.destroy();
+                }
+            }
+        }, 30000); // 30초 타임아웃
 
     } catch (error) {
         console.error("[MP4] Error:", error);
