@@ -121,13 +121,6 @@ app.get("/mp3", async (req, res) => {
             }
         });
 
-        // 응답 헤더를 먼저 명시적으로 설정
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, User-Agent');
-        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(safeFileName)}.mp3"`);
-        res.setHeader('Content-Type', 'audio/mpeg');
-
         // 타임아웃 설정 (30분)
         res.setTimeout(1800000);
 
@@ -138,6 +131,7 @@ app.get("/mp3", async (req, res) => {
         stream.on('error', (error) => {
             console.error(`[MP3] Stream error:`, error);
             if (!headersSent) {
+                res.header('Access-Control-Allow-Origin', '*');
                 res.status(500).json({ error: error.message || "Stream error occurred" });
             } else if (!res.finished && !res.destroyed) {
                 try {
@@ -155,9 +149,15 @@ app.get("/mp3", async (req, res) => {
         stream.once('data', (firstChunk) => {
             if (!headersSent) {
                 headersSent = true;
-                console.log(`[MP3] First chunk received: ${firstChunk.length} bytes`);
+                console.log(`[MP3] First chunk received: ${firstChunk.length} bytes, sending headers...`);
                 // 헤더를 명시적으로 전송하고 첫 청크를 쓰기
-                res.writeHead(200);
+                res.writeHead(200, {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Accept, User-Agent',
+                    'Content-Disposition': `attachment; filename="${encodeURIComponent(safeFileName)}.mp3"`,
+                    'Content-Type': 'audio/mpeg'
+                });
                 res.write(firstChunk);
                 bytesSent += firstChunk.length;
                 // 나머지 스트림을 파이핑
@@ -250,13 +250,6 @@ app.get("/mp4", async (req, res) => {
             }
         });
 
-        // 응답 헤더를 먼저 명시적으로 설정
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, User-Agent');
-        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(safeFileName)}.mp4"`);
-        res.setHeader('Content-Type', 'video/mp4');
-
         // 타임아웃 설정 (30분)
         res.setTimeout(1800000);
 
@@ -267,6 +260,7 @@ app.get("/mp4", async (req, res) => {
         stream.on('error', (error) => {
             console.error(`[MP4] Stream error:`, error);
             if (!headersSent) {
+                res.header('Access-Control-Allow-Origin', '*');
                 res.status(500).json({ error: error.message || "Stream error occurred" });
             } else if (!res.finished && !res.destroyed) {
                 try {
@@ -284,9 +278,15 @@ app.get("/mp4", async (req, res) => {
         stream.once('data', (firstChunk) => {
             if (!headersSent) {
                 headersSent = true;
-                console.log(`[MP4] First chunk received: ${firstChunk.length} bytes`);
+                console.log(`[MP4] First chunk received: ${firstChunk.length} bytes, sending headers...`);
                 // 헤더를 명시적으로 전송하고 첫 청크를 쓰기
-                res.writeHead(200);
+                res.writeHead(200, {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Accept, User-Agent',
+                    'Content-Disposition': `attachment; filename="${encodeURIComponent(safeFileName)}.mp4"`,
+                    'Content-Type': 'video/mp4'
+                });
                 res.write(firstChunk);
                 bytesSent += firstChunk.length;
                 // 나머지 스트림을 파이핑
