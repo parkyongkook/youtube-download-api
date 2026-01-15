@@ -98,23 +98,26 @@ app.get("/mp3", async (req, res) => {
         const audioFormats = info.formats.filter(f => f.hasAudio && !f.hasVideo);
         console.log(`[MP3] Audio-only formats: ${audioFormats.length}`);
         
+        let selectedFormat = null;
         if (audioFormats.length > 0) {
-            // 오디오 전용 포맷이 있으면 사용
-            const format = audioFormats[0];
-            console.log(`[MP3] Using audio-only format: ${format.itag}`);
-            stream = ytdl.downloadFromInfo(info, { format: format });
+            // 오디오 전용 포맷 중 가장 낮은 비트레이트 선택 (403 오류 가능성 낮음)
+            selectedFormat = audioFormats.sort((a, b) => (a.audioBitrate || 0) - (b.audioBitrate || 0))[0];
+            console.log(`[MP3] Selected audio-only format: itag=${selectedFormat.itag}, bitrate=${selectedFormat.audioBitrate}`);
         } else {
             // 오디오 전용 포맷이 없으면 오디오가 있는 포맷 중 가장 낮은 품질 사용
             const formatsWithAudio = info.formats.filter(f => f.hasAudio);
             if (formatsWithAudio.length > 0) {
-                const format = formatsWithAudio.sort((a, b) => (a.audioBitrate || 0) - (b.audioBitrate || 0))[0];
-                console.log(`[MP3] Using format with audio: ${format.itag}, bitrate: ${format.audioBitrate}`);
-                stream = ytdl.downloadFromInfo(info, { format: format });
-            } else {
-                // 직접 URL로 시도
-                console.log(`[MP3] No suitable format found, trying direct URL...`);
-                stream = ytdl(url, { quality: 'lowestaudio', filter: 'audioonly' });
+                selectedFormat = formatsWithAudio.sort((a, b) => (a.audioBitrate || 0) - (b.audioBitrate || 0))[0];
+                console.log(`[MP3] Selected format with audio: itag=${selectedFormat.itag}, bitrate=${selectedFormat.audioBitrate}`);
             }
+        }
+        
+        if (selectedFormat) {
+            stream = ytdl.downloadFromInfo(info, { format: selectedFormat });
+        } else {
+            // format 선택 실패 시 직접 URL로 시도
+            console.log(`[MP3] No suitable format found, trying direct URL...`);
+            stream = ytdl(url, { quality: 'lowestaudio', filter: 'audioonly' });
         }
         console.log(`[MP3] Stream created successfully`);
 
