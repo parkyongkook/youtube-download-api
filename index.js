@@ -138,7 +138,7 @@ app.get("/mp3", async (req, res) => {
             }
         });
 
-        // 응답 헤더 설정 (파이핑 전에 설정)
+        // 응답 헤더 설정 (파이핑 전에 명시적으로 설정)
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, User-Agent');
@@ -159,13 +159,6 @@ app.get("/mp3", async (req, res) => {
 
         stream.on('end', () => {
             console.log(`[MP3] Stream ended. Total bytes sent: ${bytesSent}`);
-            if (!res.finished && !res.destroyed) {
-                try {
-                    res.end();
-                } catch (e) {
-                    console.error(`[MP3] Error ending response:`, e);
-                }
-            }
         });
 
         // 스트림을 응답으로 파이핑
@@ -261,7 +254,7 @@ app.get("/mp4", async (req, res) => {
             }
         });
 
-        // 응답 헤더 설정 (파이핑 전에 설정)
+        // 응답 헤더 설정 (파이핑 전에 명시적으로 설정)
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, User-Agent');
@@ -282,13 +275,6 @@ app.get("/mp4", async (req, res) => {
 
         stream.on('end', () => {
             console.log(`[MP4] Stream ended. Total bytes sent: ${bytesSent}`);
-            if (!res.finished && !res.destroyed) {
-                try {
-                    res.end();
-                } catch (e) {
-                    console.error(`[MP4] Error ending response:`, e);
-                }
-            }
         });
 
         // 스트림을 응답으로 파이핑
