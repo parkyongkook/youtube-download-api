@@ -94,28 +94,12 @@ app.get("/mp3", async (req, res) => {
 
         // 스트림 생성 및 에러 핸들링
         // 직접 URL로 스트림 생성 (더 안정적)
-        try {
-            console.log(`[MP3] Creating stream directly from URL...`);
-            stream = ytdl(url, { 
-                quality: 'highestaudio',
-                filter: 'audioonly'
-            });
-            console.log(`[MP3] Stream created successfully`);
-        } catch (streamError) {
-            console.error(`[MP3] Failed to create stream:`, streamError);
-            // 대체 방법: 낮은 품질로 시도
-            try {
-                console.log(`[MP3] Trying fallback method with lower quality...`);
-                stream = ytdl(url, { quality: 'lowestaudio', filter: 'audioonly' });
-            } catch (fallbackError) {
-                console.error(`[MP3] Fallback also failed:`, fallbackError);
-                if (!res.headersSent) {
-                    res.header('Access-Control-Allow-Origin', '*');
-                    res.status(500).json({ error: streamError.message || "Failed to create stream" });
-                }
-                return;
-            }
-        }
+        console.log(`[MP3] Creating stream directly from URL...`);
+        stream = ytdl(url, { 
+            quality: 'highestaudio',
+            filter: 'audioonly'
+        });
+        console.log(`[MP3] Stream created successfully`);
 
         // 클라이언트 연결 종료 시 스트림 정리
         req.on('close', () => {
@@ -267,27 +251,11 @@ app.get("/mp4", async (req, res) => {
 
         // 스트림 생성 및 에러 핸들링
         // 직접 URL로 스트림 생성 (더 안정적)
-        try {
-            console.log(`[MP4] Creating stream directly from URL...`);
-            stream = ytdl(url, {
-                quality: 'highest'
-            });
-            console.log(`[MP4] Stream created successfully`);
-        } catch (streamError) {
-            console.error(`[MP4] Failed to create stream:`, streamError);
-            // 대체 방법: 낮은 품질로 시도
-            try {
-                console.log(`[MP4] Trying fallback method with lower quality...`);
-                stream = ytdl(url, { quality: 'lowest' });
-            } catch (fallbackError) {
-                console.error(`[MP4] Fallback also failed:`, fallbackError);
-                if (!res.headersSent) {
-                    res.header('Access-Control-Allow-Origin', '*');
-                    res.status(500).json({ error: streamError.message || "Failed to create stream" });
-                }
-                return;
-            }
-        }
+        console.log(`[MP4] Creating stream directly from URL...`);
+        stream = ytdl(url, {
+            quality: 'highest'
+        });
+        console.log(`[MP4] Stream created successfully`);
 
         // 클라이언트 연결 종료 시 스트림 정리
         req.on('close', () => {
