@@ -92,35 +92,18 @@ app.get("/mp3", async (req, res) => {
         console.log(`[MP3] Video title: ${videoName}`);
         console.log(`[MP3] Starting download...`);
 
-        // CORS 헤더 설정 (먼저 설정)
-        res.header('Access-Control-Allow-Origin', '*');
-        res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-        res.header('Access-Control-Allow-Headers', 'Content-Type, Accept, User-Agent');
-        res.header(
+        // CORS 헤더 설정
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, User-Agent');
+        res.setHeader(
             "Content-Disposition",
             `attachment; filename="${encodeURIComponent(safeFileName)}.mp3"`
         );
-        res.header("Content-type", "audio/mpeg");
-        res.header("Transfer-Encoding", "chunked");
+        res.setHeader("Content-Type", "audio/mpeg");
 
         // 타임아웃 설정 (30분)
         res.setTimeout(1800000);
-
-        // 클라이언트 연결 종료 시 스트림 정리
-        req.on('close', () => {
-            console.log(`[MP3] Client disconnected`);
-            if (stream) {
-                stream.destroy();
-            }
-        });
-
-        // 응답이 닫혔을 때 스트림 정리
-        res.on('close', () => {
-            console.log(`[MP3] Response closed`);
-            if (stream) {
-                stream.destroy();
-            }
-        });
 
         // 스트림 생성 및 에러 핸들링
         try {
@@ -134,10 +117,25 @@ app.get("/mp3", async (req, res) => {
             return;
         }
 
+        // 클라이언트 연결 종료 시 스트림 정리
+        req.on('close', () => {
+            console.log(`[MP3] Client disconnected`);
+            if (stream && !stream.destroyed) {
+                stream.destroy();
+            }
+        });
+
+        // 응답이 닫혔을 때 스트림 정리
+        res.on('close', () => {
+            console.log(`[MP3] Response closed`);
+            if (stream && !stream.destroyed) {
+                stream.destroy();
+            }
+        });
+
         stream.on('error', (error) => {
             console.error(`[MP3] Stream error:`, error);
             if (!res.headersSent) {
-                res.header('Access-Control-Allow-Origin', '*');
                 res.status(500).json({ error: error.message || "Stream error occurred" });
             } else if (!res.finished && !res.destroyed) {
                 try {
@@ -162,26 +160,9 @@ app.get("/mp3", async (req, res) => {
             }
         });
 
-        stream.on('data', (chunk) => {
-            // 첫 데이터가 도착하면 헤더가 전송되었음을 확인
-            if (!res.headersSent) {
-                console.log(`[MP3] First chunk received, headers should be sent`);
-            }
-        });
-
-        // 스트림을 응답으로 파이핑 (에러 핸들링 포함)
-        try {
-            stream.pipe(res, { end: true });
-            console.log(`[MP3] Stream piped to response`);
-        } catch (pipeError) {
-            console.error(`[MP3] Pipe error:`, pipeError);
-            if (!res.headersSent) {
-                res.status(500).json({ error: pipeError.message || "Failed to pipe stream" });
-            }
-            if (stream && !stream.destroyed) {
-                stream.destroy();
-            }
-        }
+        // 스트림을 응답으로 파이핑
+        console.log(`[MP3] Piping stream to response...`);
+        stream.pipe(res);
 
     } catch (error) {
         console.error("[MP3] Error:", error);
@@ -227,35 +208,18 @@ app.get("/mp4", async (req, res) => {
         console.log(`[MP4] Video title: ${videoName}`);
         console.log(`[MP4] Starting download...`);
 
-        // CORS 헤더 설정 (먼저 설정)
-        res.header('Access-Control-Allow-Origin', '*');
-        res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-        res.header('Access-Control-Allow-Headers', 'Content-Type, Accept, User-Agent');
-        res.header(
+        // CORS 헤더 설정
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, User-Agent');
+        res.setHeader(
             "Content-Disposition",
             `attachment; filename="${encodeURIComponent(safeFileName)}.mp4"`
         );
-        res.header("Content-type", "video/mp4");
-        res.header("Transfer-Encoding", "chunked");
+        res.setHeader("Content-Type", "video/mp4");
 
         // 타임아웃 설정 (30분)
         res.setTimeout(1800000);
-
-        // 클라이언트 연결 종료 시 스트림 정리
-        req.on('close', () => {
-            console.log(`[MP4] Client disconnected`);
-            if (stream) {
-                stream.destroy();
-            }
-        });
-
-        // 응답이 닫혔을 때 스트림 정리
-        res.on('close', () => {
-            console.log(`[MP4] Response closed`);
-            if (stream) {
-                stream.destroy();
-            }
-        });
 
         // 스트림 생성 및 에러 핸들링
         try {
@@ -268,10 +232,25 @@ app.get("/mp4", async (req, res) => {
             return;
         }
 
+        // 클라이언트 연결 종료 시 스트림 정리
+        req.on('close', () => {
+            console.log(`[MP4] Client disconnected`);
+            if (stream && !stream.destroyed) {
+                stream.destroy();
+            }
+        });
+
+        // 응답이 닫혔을 때 스트림 정리
+        res.on('close', () => {
+            console.log(`[MP4] Response closed`);
+            if (stream && !stream.destroyed) {
+                stream.destroy();
+            }
+        });
+
         stream.on('error', (error) => {
             console.error(`[MP4] Stream error:`, error);
             if (!res.headersSent) {
-                res.header('Access-Control-Allow-Origin', '*');
                 res.status(500).json({ error: error.message || "Stream error occurred" });
             } else if (!res.finished && !res.destroyed) {
                 try {
@@ -296,26 +275,9 @@ app.get("/mp4", async (req, res) => {
             }
         });
 
-        stream.on('data', (chunk) => {
-            // 첫 데이터가 도착하면 헤더가 전송되었음을 확인
-            if (!res.headersSent) {
-                console.log(`[MP4] First chunk received, headers should be sent`);
-            }
-        });
-
-        // 스트림을 응답으로 파이핑 (에러 핸들링 포함)
-        try {
-            stream.pipe(res, { end: true });
-            console.log(`[MP4] Stream piped to response`);
-        } catch (pipeError) {
-            console.error(`[MP4] Pipe error:`, pipeError);
-            if (!res.headersSent) {
-                res.status(500).json({ error: pipeError.message || "Failed to pipe stream" });
-            }
-            if (stream && !stream.destroyed) {
-                stream.destroy();
-            }
-        }
+        // 스트림을 응답으로 파이핑
+        console.log(`[MP4] Piping stream to response...`);
+        stream.pipe(res);
 
     } catch (error) {
         console.error("[MP4] Error:", error);
