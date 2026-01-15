@@ -124,11 +124,13 @@ app.get("/mp3", async (req, res) => {
         }
         
         if (!selectedFormat || !selectedFormat.url) {
-            throw new Error('No suitable format with URL found');
+            // format 선택 실패 시 직접 URL로 시도
+            console.log(`[MP3] No format with URL found, trying direct URL method...`);
+            stream = ytdl(url, { quality: 'lowestaudio', filter: 'audioonly' });
+        } else {
+            console.log(`[MP3] Using format: itag=${selectedFormat.itag}, url exists: ${!!selectedFormat.url}`);
+            stream = ytdl.downloadFromInfo(info, { format: selectedFormat });
         }
-        
-        console.log(`[MP3] Using format: itag=${selectedFormat.itag}, url exists: ${!!selectedFormat.url}`);
-        stream = ytdl.downloadFromInfo(info, { format: selectedFormat });
         console.log(`[MP3] Stream created successfully`);
 
         // 클라이언트 연결 종료 시 스트림 정리
