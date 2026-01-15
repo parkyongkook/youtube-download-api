@@ -93,12 +93,29 @@ app.get("/mp3", async (req, res) => {
         console.log(`[MP3] Starting download...`);
 
         // 스트림 생성 및 에러 핸들링
-        // 직접 URL로 스트림 생성 (더 안정적)
-        console.log(`[MP3] Creating stream directly from URL...`);
-        stream = ytdl(url, { 
-            quality: 'highestaudio',
-            filter: 'audioonly'
-        });
+        // info에서 사용 가능한 format 확인 후 스트림 생성
+        console.log(`[MP3] Available formats: ${info.formats.length}`);
+        const audioFormats = info.formats.filter(f => f.hasAudio && !f.hasVideo);
+        console.log(`[MP3] Audio-only formats: ${audioFormats.length}`);
+        
+        if (audioFormats.length > 0) {
+            // 오디오 전용 포맷이 있으면 사용
+            const format = audioFormats[0];
+            console.log(`[MP3] Using audio-only format: ${format.itag}`);
+            stream = ytdl.downloadFromInfo(info, { format: format });
+        } else {
+            // 오디오 전용 포맷이 없으면 오디오가 있는 포맷 중 가장 낮은 품질 사용
+            const formatsWithAudio = info.formats.filter(f => f.hasAudio);
+            if (formatsWithAudio.length > 0) {
+                const format = formatsWithAudio.sort((a, b) => (a.audioBitrate || 0) - (b.audioBitrate || 0))[0];
+                console.log(`[MP3] Using format with audio: ${format.itag}, bitrate: ${format.audioBitrate}`);
+                stream = ytdl.downloadFromInfo(info, { format: format });
+            } else {
+                // 직접 URL로 시도
+                console.log(`[MP3] No suitable format found, trying direct URL...`);
+                stream = ytdl(url, { quality: 'lowestaudio', filter: 'audioonly' });
+            }
+        }
         console.log(`[MP3] Stream created successfully`);
 
         // 클라이언트 연결 종료 시 스트림 정리
@@ -250,11 +267,25 @@ app.get("/mp4", async (req, res) => {
         console.log(`[MP4] Starting download...`);
 
         // 스트림 생성 및 에러 핸들링
-        // 직접 URL로 스트림 생성 (더 안정적)
-        console.log(`[MP4] Creating stream directly from URL...`);
-        stream = ytdl(url, {
-            quality: 'highest'
-        });
+        // info에서 사용 가능한 format 확인 후 스트림 생성
+        console.log(`[MP4] Available formats: ${info.formats.length}`);
+        const videoFormats = info.formats.filter(f => f.hasVideo && f.hasAudio);
+        console.log(`[MP4] Video formats with audio: ${videoFormats.length}`);
+        
+        if (videoFormats.length > 0) {
+            // 비디오+오디오 포맷 중 가장 낮은 품질 사용 (403 오류 가능성 낮음)
+            const format = videoFormats.sort((a, b) => {
+                const aQuality = parseInt(a.qualityLabel) || 0;
+                const bQuality = parseInt(b.qualityLabel) || 0;
+                return aQuality - bQuality;
+            })[0];
+            console.log(`[MP4] Using format: ${format.itag}, quality: ${format.qualityLabel}`);
+            stream = ytdl.downloadFromInfo(info, { format: format });
+        } else {
+            // 직접 URL로 시도
+            console.log(`[MP4] No suitable format found, trying direct URL...`);
+            stream = ytdl(url, { quality: 'lowest' });
+        }
         console.log(`[MP4] Stream created successfully`);
 
         // 클라이언트 연결 종료 시 스트림 정리
