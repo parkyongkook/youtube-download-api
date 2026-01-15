@@ -93,31 +93,19 @@ app.get("/mp3", async (req, res) => {
         console.log(`[MP3] Starting download...`);
 
         // 스트림 생성 및 에러 핸들링
-        // 이미 가져온 info를 사용하여 format 선택 후 스트림 생성 (403 오류 방지)
+        // 직접 URL로 스트림 생성 (더 안정적)
         try {
-            const audioFormats = ytdl.filterFormats(info.formats, 'audioonly');
-            
-            if (audioFormats.length === 0) {
-                // audioonly가 없으면 비디오+오디오 포맷에서 오디오만 추출
-                const formatsWithAudio = info.formats.filter(f => f.hasAudio);
-                if (formatsWithAudio.length === 0) {
-                    throw new Error('No audio formats available');
-                }
-                // 가장 낮은 비트레이트의 포맷 선택 (403 오류 가능성 낮음)
-                const format = formatsWithAudio.sort((a, b) => (a.audioBitrate || 0) - (b.audioBitrate || 0))[0];
-                console.log(`[MP3] Selected format (fallback): ${format.qualityLabel || format.audioQuality || 'default'}`);
-                stream = ytdl.downloadFromInfo(info, { format: format });
-            } else {
-                // 가장 높은 품질의 오디오 포맷 선택
-                const format = audioFormats.sort((a, b) => (b.audioBitrate || 0) - (a.audioBitrate || 0))[0];
-                console.log(`[MP3] Selected format: ${format.qualityLabel || format.audioQuality || 'default'}`);
-                stream = ytdl.downloadFromInfo(info, { format: format });
-            }
+            console.log(`[MP3] Creating stream directly from URL...`);
+            stream = ytdl(url, { 
+                quality: 'highestaudio',
+                filter: 'audioonly'
+            });
+            console.log(`[MP3] Stream created successfully`);
         } catch (streamError) {
             console.error(`[MP3] Failed to create stream:`, streamError);
-            // 대체 방법: 직접 URL로 스트림 생성 시도
+            // 대체 방법: 낮은 품질로 시도
             try {
-                console.log(`[MP3] Trying fallback method...`);
+                console.log(`[MP3] Trying fallback method with lower quality...`);
                 stream = ytdl(url, { quality: 'lowestaudio', filter: 'audioonly' });
             } catch (fallbackError) {
                 console.error(`[MP3] Fallback also failed:`, fallbackError);
@@ -278,29 +266,27 @@ app.get("/mp4", async (req, res) => {
         console.log(`[MP4] Starting download...`);
 
         // 스트림 생성 및 에러 핸들링
-        // 이미 가져온 info를 사용하여 format 선택 후 스트림 생성 (403 오류 방지)
+        // 직접 URL로 스트림 생성 (더 안정적)
         try {
-            const videoFormats = info.formats.filter(f => f.hasVideo);
-            
-            if (videoFormats.length === 0) {
-                throw new Error('No video formats available');
-            }
-
-            // 가장 높은 품질의 비디오 포맷 선택
-            const format = videoFormats.find(f => f.hasVideo && f.hasAudio) || videoFormats[0];
-            
-            console.log(`[MP4] Selected format: ${format.qualityLabel || 'default'}`);
-            
-            stream = ytdl.downloadFromInfo(info, {
-                format: format
+            console.log(`[MP4] Creating stream directly from URL...`);
+            stream = ytdl(url, {
+                quality: 'highest'
             });
+            console.log(`[MP4] Stream created successfully`);
         } catch (streamError) {
             console.error(`[MP4] Failed to create stream:`, streamError);
-            if (!res.headersSent) {
-                res.header('Access-Control-Allow-Origin', '*');
-                res.status(500).json({ error: streamError.message || "Failed to create stream" });
+            // 대체 방법: 낮은 품질로 시도
+            try {
+                console.log(`[MP4] Trying fallback method with lower quality...`);
+                stream = ytdl(url, { quality: 'lowest' });
+            } catch (fallbackError) {
+                console.error(`[MP4] Fallback also failed:`, fallbackError);
+                if (!res.headersSent) {
+                    res.header('Access-Control-Allow-Origin', '*');
+                    res.status(500).json({ error: streamError.message || "Failed to create stream" });
+                }
+                return;
             }
-            return;
         }
 
         // 클라이언트 연결 종료 시 스트림 정리
