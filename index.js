@@ -2,6 +2,15 @@ const express = require("express");
 const ytdl = require('@distube/ytdl-core');
 const cors = require("cors");
 
+// ytdl-core 설정 (403 오류 방지)
+ytdl.setOptions({
+    requestOptions: {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+    }
+});
+
 const app = express();
 
 // 요청 크기 제한 증가 (Railway를 위한 설정)
@@ -98,24 +107,35 @@ app.get("/mp3", async (req, res) => {
             const audioFormats = ytdl.filterFormats(info.formats, 'audioonly');
             
             if (audioFormats.length === 0) {
-                throw new Error('No audio formats available');
+                // audioonly가 없으면 비디오+오디오 포맷에서 오디오만 추출
+                const formatsWithAudio = info.formats.filter(f => f.hasAudio);
+                if (formatsWithAudio.length === 0) {
+                    throw new Error('No audio formats available');
+                }
+                // 가장 낮은 비트레이트의 포맷 선택 (403 오류 가능성 낮음)
+                const format = formatsWithAudio.sort((a, b) => (a.audioBitrate || 0) - (b.audioBitrate || 0))[0];
+                console.log(`[MP3] Selected format (fallback): ${format.qualityLabel || format.audioQuality || 'default'}`);
+                stream = ytdl.downloadFromInfo(info, { format: format });
+            } else {
+                // 가장 높은 품질의 오디오 포맷 선택
+                const format = audioFormats.sort((a, b) => (b.audioBitrate || 0) - (a.audioBitrate || 0))[0];
+                console.log(`[MP3] Selected format: ${format.qualityLabel || format.audioQuality || 'default'}`);
+                stream = ytdl.downloadFromInfo(info, { format: format });
             }
-
-            // 가장 높은 품질의 오디오 포맷 선택
-            const format = audioFormats.find(f => f.hasAudio && !f.hasVideo) || audioFormats[0];
-            
-            console.log(`[MP3] Selected format: ${format.qualityLabel || format.audioQuality || 'default'}`);
-            
-            stream = ytdl.downloadFromInfo(info, { 
-                format: format
-            });
         } catch (streamError) {
             console.error(`[MP3] Failed to create stream:`, streamError);
-            if (!res.headersSent) {
-                res.header('Access-Control-Allow-Origin', '*');
-                res.status(500).json({ error: streamError.message || "Failed to create stream" });
+            // 대체 방법: 직접 URL로 스트림 생성 시도
+            try {
+                console.log(`[MP3] Trying fallback method...`);
+                stream = ytdl(url, { quality: 'lowestaudio', filter: 'audioonly' });
+            } catch (fallbackError) {
+                console.error(`[MP3] Fallback also failed:`, fallbackError);
+                if (!res.headersSent) {
+                    res.header('Access-Control-Allow-Origin', '*');
+                    res.status(500).json({ error: streamError.message || "Failed to create stream" });
+                }
+                return;
             }
-            return;
         }
 
         // 클라이언트 연결 종료 시 스트림 정리
