@@ -373,14 +373,20 @@ app.use((err, req, res, next) => {
 // 프로세스 레벨 에러 핸들링
 process.on('uncaughtException', (error) => {
     console.error('Uncaught Exception:', error);
+    process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-const server = app.listen(process.env.PORT || 3500, () => {
-    console.log(`Server on port ${process.env.PORT || 3500}`);
+const PORT = process.env.PORT || 3500;
+
+const server = app.listen(PORT, () => {
+    console.log(`Server started successfully on port ${PORT}`);
+}).on('error', (error) => {
+    console.error('Server startup error:', error);
+    process.exit(1);
 });
 
 // Railway를 위한 타임아웃 설정 (30분)
