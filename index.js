@@ -2,15 +2,6 @@ const express = require("express");
 const ytdl = require('@distube/ytdl-core');
 const cors = require("cors");
 
-// ytdl-core 설정 (403 오류 방지)
-ytdl.setOptions({
-    requestOptions: {
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
-    }
-});
-
 const app = express();
 
 // 요청 크기 제한 증가 (Railway를 위한 설정)
