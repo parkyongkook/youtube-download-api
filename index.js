@@ -121,10 +121,23 @@ app.get("/mp3", async (req, res) => {
             }
         });
 
+        // 응답 헤더를 먼저 명시적으로 설정
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, User-Agent');
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(safeFileName)}.mp3"`);
+        res.setHeader('Content-Type', 'audio/mpeg');
+
+        // 타임아웃 설정 (30분)
+        res.setTimeout(1800000);
+
+        // 스트림 데이터 전송 모니터링
+        let bytesSent = 0;
+        let headersSent = false;
+
         stream.on('error', (error) => {
             console.error(`[MP3] Stream error:`, error);
-            if (!res.headersSent) {
-                res.header('Access-Control-Allow-Origin', '*');
+            if (!headersSent) {
                 res.status(500).json({ error: error.message || "Stream error occurred" });
             } else if (!res.finished && !res.destroyed) {
                 try {
@@ -138,32 +151,32 @@ app.get("/mp3", async (req, res) => {
             }
         });
 
-        // 응답 헤더 설정 (파이핑 전에 명시적으로 설정)
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, User-Agent');
-        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(safeFileName)}.mp3"`);
-        res.setHeader('Content-Type', 'audio/mpeg');
+        // 첫 데이터 청크가 도착하면 헤더 전송 후 스트림 파이핑
+        stream.once('data', (firstChunk) => {
+            if (!headersSent) {
+                headersSent = true;
+                console.log(`[MP3] First chunk received: ${firstChunk.length} bytes`);
+                // 헤더를 명시적으로 전송하고 첫 청크를 쓰기
+                res.writeHead(200);
+                res.write(firstChunk);
+                bytesSent += firstChunk.length;
+                // 나머지 스트림을 파이핑
+                stream.pipe(res, { end: false });
+            }
+        });
 
-        // 타임아웃 설정 (30분)
-        res.setTimeout(1800000);
-
-        // 스트림 데이터 전송 모니터링
-        let bytesSent = 0;
         stream.on('data', (chunk) => {
-            bytesSent += chunk.length;
-            if (bytesSent === chunk.length) {
-                console.log(`[MP3] First chunk sent: ${chunk.length} bytes`);
+            if (headersSent) {
+                bytesSent += chunk.length;
             }
         });
 
         stream.on('end', () => {
             console.log(`[MP3] Stream ended. Total bytes sent: ${bytesSent}`);
+            if (!res.finished && !res.destroyed) {
+                res.end();
+            }
         });
-
-        // 스트림을 응답으로 파이핑
-        console.log(`[MP3] Piping stream to response...`);
-        stream.pipe(res);
 
     } catch (error) {
         console.error("[MP3] Error:", error);
@@ -237,10 +250,23 @@ app.get("/mp4", async (req, res) => {
             }
         });
 
+        // 응답 헤더를 먼저 명시적으로 설정
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, User-Agent');
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(safeFileName)}.mp4"`);
+        res.setHeader('Content-Type', 'video/mp4');
+
+        // 타임아웃 설정 (30분)
+        res.setTimeout(1800000);
+
+        // 스트림 데이터 전송 모니터링
+        let bytesSent = 0;
+        let headersSent = false;
+
         stream.on('error', (error) => {
             console.error(`[MP4] Stream error:`, error);
-            if (!res.headersSent) {
-                res.header('Access-Control-Allow-Origin', '*');
+            if (!headersSent) {
                 res.status(500).json({ error: error.message || "Stream error occurred" });
             } else if (!res.finished && !res.destroyed) {
                 try {
@@ -254,32 +280,32 @@ app.get("/mp4", async (req, res) => {
             }
         });
 
-        // 응답 헤더 설정 (파이핑 전에 명시적으로 설정)
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, User-Agent');
-        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(safeFileName)}.mp4"`);
-        res.setHeader('Content-Type', 'video/mp4');
+        // 첫 데이터 청크가 도착하면 헤더 전송 후 스트림 파이핑
+        stream.once('data', (firstChunk) => {
+            if (!headersSent) {
+                headersSent = true;
+                console.log(`[MP4] First chunk received: ${firstChunk.length} bytes`);
+                // 헤더를 명시적으로 전송하고 첫 청크를 쓰기
+                res.writeHead(200);
+                res.write(firstChunk);
+                bytesSent += firstChunk.length;
+                // 나머지 스트림을 파이핑
+                stream.pipe(res, { end: false });
+            }
+        });
 
-        // 타임아웃 설정 (30분)
-        res.setTimeout(1800000);
-
-        // 스트림 데이터 전송 모니터링
-        let bytesSent = 0;
         stream.on('data', (chunk) => {
-            bytesSent += chunk.length;
-            if (bytesSent === chunk.length) {
-                console.log(`[MP4] First chunk sent: ${chunk.length} bytes`);
+            if (headersSent) {
+                bytesSent += chunk.length;
             }
         });
 
         stream.on('end', () => {
             console.log(`[MP4] Stream ended. Total bytes sent: ${bytesSent}`);
+            if (!res.finished && !res.destroyed) {
+                res.end();
+            }
         });
-
-        // 스트림을 응답으로 파이핑
-        console.log(`[MP4] Piping stream to response...`);
-        stream.pipe(res);
 
     } catch (error) {
         console.error("[MP4] Error:", error);
