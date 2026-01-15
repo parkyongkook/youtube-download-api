@@ -92,19 +92,6 @@ app.get("/mp3", async (req, res) => {
         console.log(`[MP3] Video title: ${videoName}`);
         console.log(`[MP3] Starting download...`);
 
-        // CORS 헤더 설정
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, User-Agent');
-        res.setHeader(
-            "Content-Disposition",
-            `attachment; filename="${encodeURIComponent(safeFileName)}.mp3"`
-        );
-        res.setHeader("Content-Type", "audio/mpeg");
-
-        // 타임아웃 설정 (30분)
-        res.setTimeout(1800000);
-
         // 스트림 생성 및 에러 핸들링
         try {
             stream = ytdl(url, { 
@@ -113,6 +100,7 @@ app.get("/mp3", async (req, res) => {
             });
         } catch (streamError) {
             console.error(`[MP3] Failed to create stream:`, streamError);
+            res.header('Access-Control-Allow-Origin', '*');
             res.status(500).json({ error: streamError.message || "Failed to create stream" });
             return;
         }
@@ -136,6 +124,7 @@ app.get("/mp3", async (req, res) => {
         stream.on('error', (error) => {
             console.error(`[MP3] Stream error:`, error);
             if (!res.headersSent) {
+                res.header('Access-Control-Allow-Origin', '*');
                 res.status(500).json({ error: error.message || "Stream error occurred" });
             } else if (!res.finished && !res.destroyed) {
                 try {
@@ -160,9 +149,22 @@ app.get("/mp3", async (req, res) => {
             }
         });
 
+        // 응답 헤더를 먼저 명시적으로 전송
+        res.writeHead(200, {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Accept, User-Agent',
+            'Content-Disposition': `attachment; filename="${encodeURIComponent(safeFileName)}.mp3"`,
+            'Content-Type': 'audio/mpeg',
+            'Transfer-Encoding': 'chunked'
+        });
+
+        // 타임아웃 설정 (30분)
+        res.setTimeout(1800000);
+
         // 스트림을 응답으로 파이핑
         console.log(`[MP3] Piping stream to response...`);
-        stream.pipe(res);
+        stream.pipe(res, { end: true });
 
     } catch (error) {
         console.error("[MP3] Error:", error);
@@ -208,19 +210,6 @@ app.get("/mp4", async (req, res) => {
         console.log(`[MP4] Video title: ${videoName}`);
         console.log(`[MP4] Starting download...`);
 
-        // CORS 헤더 설정
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, User-Agent');
-        res.setHeader(
-            "Content-Disposition",
-            `attachment; filename="${encodeURIComponent(safeFileName)}.mp4"`
-        );
-        res.setHeader("Content-Type", "video/mp4");
-
-        // 타임아웃 설정 (30분)
-        res.setTimeout(1800000);
-
         // 스트림 생성 및 에러 핸들링
         try {
             stream = ytdl(url, {
@@ -228,6 +217,7 @@ app.get("/mp4", async (req, res) => {
             });
         } catch (streamError) {
             console.error(`[MP4] Failed to create stream:`, streamError);
+            res.header('Access-Control-Allow-Origin', '*');
             res.status(500).json({ error: streamError.message || "Failed to create stream" });
             return;
         }
@@ -251,6 +241,7 @@ app.get("/mp4", async (req, res) => {
         stream.on('error', (error) => {
             console.error(`[MP4] Stream error:`, error);
             if (!res.headersSent) {
+                res.header('Access-Control-Allow-Origin', '*');
                 res.status(500).json({ error: error.message || "Stream error occurred" });
             } else if (!res.finished && !res.destroyed) {
                 try {
@@ -275,9 +266,22 @@ app.get("/mp4", async (req, res) => {
             }
         });
 
+        // 응답 헤더를 먼저 명시적으로 전송
+        res.writeHead(200, {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Accept, User-Agent',
+            'Content-Disposition': `attachment; filename="${encodeURIComponent(safeFileName)}.mp4"`,
+            'Content-Type': 'video/mp4',
+            'Transfer-Encoding': 'chunked'
+        });
+
+        // 타임아웃 설정 (30분)
+        res.setTimeout(1800000);
+
         // 스트림을 응답으로 파이핑
         console.log(`[MP4] Piping stream to response...`);
-        stream.pipe(res);
+        stream.pipe(res, { end: true });
 
     } catch (error) {
         console.error("[MP4] Error:", error);
