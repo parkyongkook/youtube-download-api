@@ -177,12 +177,43 @@ app.get("/mp3", async (req, res) => {
 
         stream.on('error', (error) => {
             console.error(`[MP3] Stream error:`, error);
+            console.error(`[MP3] Error details:`, {
+                message: error.message,
+                code: error.code,
+                statusCode: error.statusCode,
+                response: error.response?.statusCode
+            });
+            
+            // 403 오류인 경우 대체 방법 시도
+            if (error.message && error.message.includes('403')) {
+                console.log(`[MP3] 403 error detected, trying alternative method...`);
+                try {
+                    // 기존 스트림 정리
+                    if (stream && !stream.destroyed) {
+                        stream.destroy();
+                    }
+                    // 더 간단한 방법으로 재시도
+                    const altStream = ytdl(url, { 
+                        quality: 'lowestaudio',
+                        filter: 'audioonly'
+                    });
+                    altStream.pipe(res);
+                    return;
+                } catch (retryError) {
+                    console.error(`[MP3] Retry also failed:`, retryError);
+                }
+            }
+            
             if (!res.headersSent) {
                 res.writeHead(500, {
                     'Access-Control-Allow-Origin': '*',
                     'Content-Type': 'application/json'
                 });
-                res.end(JSON.stringify({ error: error.message || "Stream error occurred" }));
+                res.end(JSON.stringify({ 
+                    error: error.message || "Stream error occurred",
+                    code: error.code,
+                    statusCode: error.statusCode
+                }));
             } else if (!res.finished && !res.destroyed) {
                 try {
                     res.end();
