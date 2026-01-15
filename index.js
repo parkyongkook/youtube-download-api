@@ -105,10 +105,17 @@ app.get("/mp3", async (req, res) => {
         // 타임아웃 설정 (30분)
         res.setTimeout(1800000);
 
+        // 클라이언트 연결 종료 시 스트림 정리
+        req.on('close', () => {
+            console.log(`[MP3] Client disconnected`);
+            if (stream) {
+                stream.destroy();
+            }
+        });
+
         // 스트림 생성 및 에러 핸들링
         stream = ytdl(url, { 
-            quality: "highestaudio",
-            filter: "audioonly"
+            quality: "highestaudio"
         });
 
         stream.on('error', (error) => {
@@ -116,20 +123,31 @@ app.get("/mp3", async (req, res) => {
             if (!res.headersSent) {
                 res.header('Access-Control-Allow-Origin', '*');
                 res.status(500).json({ error: error.message || "Stream error occurred" });
+            } else if (!res.finished) {
+                res.end();
+            }
+            if (stream) {
+                stream.destroy();
             }
         });
 
         stream.on('end', () => {
             console.log(`[MP3] Download completed`);
+            if (!res.finished) {
+                res.end();
+            }
         });
 
-        stream.pipe(res);
+        // 스트림을 응답으로 파이핑
+        stream.pipe(res, { end: true });
 
     } catch (error) {
         console.error("[MP3] Error:", error);
         if (!res.headersSent) {
             res.header('Access-Control-Allow-Origin', '*');
             res.status(500).json({ error: error.message || "Internal server error" });
+        } else if (!res.finished) {
+            res.end();
         }
         // 스트림이 생성되었다면 정리
         if (stream) {
@@ -180,6 +198,14 @@ app.get("/mp4", async (req, res) => {
         // 타임아웃 설정 (30분)
         res.setTimeout(1800000);
 
+        // 클라이언트 연결 종료 시 스트림 정리
+        req.on('close', () => {
+            console.log(`[MP4] Client disconnected`);
+            if (stream) {
+                stream.destroy();
+            }
+        });
+
         // 스트림 생성 및 에러 핸들링
         stream = ytdl(url, {
             quality: "highest"
@@ -190,26 +216,55 @@ app.get("/mp4", async (req, res) => {
             if (!res.headersSent) {
                 res.header('Access-Control-Allow-Origin', '*');
                 res.status(500).json({ error: error.message || "Stream error occurred" });
+            } else if (!res.finished) {
+                res.end();
+            }
+            if (stream) {
+                stream.destroy();
             }
         });
 
         stream.on('end', () => {
             console.log(`[MP4] Download completed`);
+            if (!res.finished) {
+                res.end();
+            }
         });
 
-        stream.pipe(res);
+        // 스트림을 응답으로 파이핑
+        stream.pipe(res, { end: true });
 
     } catch (error) {
         console.error("[MP4] Error:", error);
         if (!res.headersSent) {
             res.header('Access-Control-Allow-Origin', '*');
             res.status(500).json({ error: error.message || "Internal server error" });
+        } else if (!res.finished) {
+            res.end();
         }
         // 스트림이 생성되었다면 정리
         if (stream) {
             stream.destroy();
         }
     }
+});
+
+// 전역 에러 핸들러
+app.use((err, req, res, next) => {
+    console.error('Unhandled error:', err);
+    if (!res.headersSent) {
+        res.header('Access-Control-Allow-Origin', '*');
+        res.status(500).json({ error: err.message || 'Internal server error' });
+    }
+});
+
+// 프로세스 레벨 에러 핸들링
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
 const server = app.listen(process.env.PORT || 3500, () => {
